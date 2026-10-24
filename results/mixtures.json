@@ -1,0 +1,161 @@
+{
+  "design": {
+    "normal_share": [
+      0.1,
+      0.6
+    ],
+    "mixed_copies_per_tumour": 1,
+    "normal_pool": "GTEx training donors, 26 tissues"
+  },
+  "synthetic_check": [
+    {
+      "normal_share": 0.0,
+      "model": "tumours_only",
+      "accuracy": 0.9566115702479339
+    },
+    {
+      "normal_share": 0.0,
+      "model": "with_mixtures",
+      "accuracy": 0.9552341597796143
+    },
+    {
+      "normal_share": 0.2,
+      "model": "tumours_only",
+      "accuracy": 0.9159779614325069
+    },
+    {
+      "normal_share": 0.2,
+      "model": "with_mixtures",
+      "accuracy": 0.9504132231404959
+    },
+    {
+      "normal_share": 0.4,
+      "model": "tumours_only",
+      "accuracy": 0.803030303030303
+    },
+    {
+      "normal_share": 0.4,
+      "model": "with_mixtures",
+      "accuracy": 0.9449035812672176
+    },
+    {
+      "normal_share": 0.6,
+      "model": "tumours_only",
+      "accuracy": 0.6225895316804407
+    },
+    {
+      "normal_share": 0.6,
+      "model": "with_mixtures",
+      "accuracy": 0.9352617079889807
+    }
+  ],
+  "models": {
+    "tumours_only": {
+      "tcga_test": {
+        "macro_f1": 0.9570841556673764,
+        "balanced_accuracy": 0.9604530824324253,
+        "accuracy": 0.9703856749311295,
+        "top3_accuracy": 0.9972451790633609
+      },
+      "cptac3": {
+        "n": 1266,
+        "accuracy": 0.9083728278041074,
+        "top3_accuracy": 0.9928909952606635
+      },
+      "met500": {
+        "n": 437,
+        "accuracy": 0.6636155606407322,
+        "top3_accuracy": 0.816933638443936
+      },
+      "met500_by_biopsy_site": [
+        {
+          "biopsy_tissue": "bone_marrow",
+          "accuracy": 0.773,
+          "n": 44
+        },
+        {
+          "biopsy_tissue": "liver",
+          "accuracy": 0.455,
+          "n": 123
+        },
+        {
+          "biopsy_tissue": "lung",
+          "accuracy": 0.571,
+          "n": 35
+        },
+        {
+          "biopsy_tissue": "lymph_node",
+          "accuracy": 0.802,
+          "n": 101
+        },
+        {
+          "biopsy_tissue": "skin",
+          "accuracy": 0.75,
+          "n": 20
+        },
+        {
+          "biopsy_tissue": "soft_tissue",
+          "accuracy": 0.753,
+          "n": 81
+        }
+      ],
+      "met500_liver_called_LIHC": 41
+    },
+    "with_mixtures": {
+      "tcga_test": {
+        "macro_f1": 0.9549198070736153,
+        "balanced_accuracy": 0.9573408747551524,
+        "accuracy": 0.9696969696969697,
+        "top3_accuracy": 0.9986225895316805
+      },
+      "cptac3": {
+        "n": 1266,
+        "accuracy": 0.9067930489731437,
+        "top3_accuracy": 0.9913112164296999
+      },
+      "met500": {
+        "n": 437,
+        "accuracy": 0.6956521739130435,
+        "top3_accuracy": 0.8146453089244852
+      },
+      "met500_by_biopsy_site": [
+        {
+          "biopsy_tissue": "bone_marrow",
+          "accuracy": 0.727,
+          "n": 44
+        },
+        {
+          "biopsy_tissue": "liver",
+          "accuracy": 0.569,
+          "n": 123
+        },
+        {
+          "biopsy_tissue": "lung",
+          "accuracy": 0.6,
+          "n": 35
+        },
+        {
+          "biopsy_tissue": "lymph_node",
+          "accuracy": 0.792,
+          "n": 101
+        },
+        {
+          "biopsy_tissue": "skin",
+          "accuracy": 0.8,
+          "n": 20
+        },
+        {
+          "biopsy_tissue": "soft_tissue",
+          "accuracy": 0.741,
+          "n": 81
+        }
+      ],
+      "met500_liver_called_LIHC": 16
+    }
+  },
+  "met500_paired_test": {
+    "only_first_correct": 15,
+    "only_second_correct": 29,
+    "p_value": 0.048766765904474596
+  }
+}

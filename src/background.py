@@ -20,6 +20,7 @@ import gzip
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import matplotlib
 
@@ -91,7 +92,9 @@ def read_gtex(samples: list[str], genes: set) -> pd.DataFrame:
     return out[~out.index.duplicated()].T
 
 
-def main() -> int:
+def load_setup() -> SimpleNamespace:
+    """TCGA train/val/test on the genes shared with GTEx, plus GTEx normalised to the TCGA scale.
+    A fifth of the GTEx donors is held out (`g_test`) and never used for training."""
     for name, (hub, remote, size) in FILES.items():
         fetch(name, remote, size, hub=hub, dest=EXT)
 
@@ -109,82 +112,104 @@ def main() -> int:
         s = samples[samples.split == split]
         return tcga.loc[s["sample"], genes].to_numpy(np.float32), s["cancer_type"].to_numpy()
 
-    (Xtr, ytr), (Xte, yte) = part("train"), part("test")
+    (Xtr, ytr), (Xva, yva), (Xte, yte) = part("train"), part("val"), part("test")
     train_filled = np.where(np.isnan(Xtr), np.nanmedian(Xtr, axis=0), Xtr)
     # GTEx goes through the same per-sample normalisation as the external cohorts.
     Xg = align(gtex.loc[gtex_meta.Sample], genes)
     shared = ~np.isnan(Xg).all(axis=0)
     Xg[:, shared] = quantile_to_reference(Xg[:, shared], reference_profile(train_filled[:, shared]))
-    yg = gtex_meta.label.to_numpy()
 
-    # Hold out a fifth of the GTEx donors to check the normal classes themselves.
     rng = np.random.default_rng(SEED)
     donors = gtex_meta._patient.unique()
     held = set(rng.choice(donors, size=len(donors) // 5, replace=False))
-    g_test = gtex_meta._patient.isin(held).to_numpy()
+    return SimpleNamespace(genes=genes, Xtr=Xtr, ytr=ytr, Xva=Xva, yva=yva, Xte=Xte, yte=yte, train_filled=train_filled,
+                           Xg=Xg, yg=gtex_meta.label.to_numpy(), gtex_meta=gtex_meta,
+                           g_test=gtex_meta._patient.isin(held).to_numpy())
 
-    print("fitting: tumours only")
-    base = logistic_pipeline(k=5000, C=0.1).fit(Xtr, ytr)
-    print("fitting: tumours + normal tissues")
-    bg_full = logistic_pipeline(k=5000, C=0.1).fit(np.vstack([Xtr, Xg[~g_test]]), np.concatenate([ytr, yg[~g_test]]))
-    bg = TumourOnly(bg_full)
-    normal_acc = float((bg_full.predict(Xg[g_test]) == yg[g_test]).mean())
-    print(f"  held-out GTEx donors: normal tissue named correctly {normal_acc:.3f} (n={g_test.sum()})")
 
-    report = {"genes": int(len(genes)), "gtex_samples": int(len(gtex_meta)), "gtex_tissues": int(gtex_meta.label.nunique()),
-              "normal_tissue_accuracy_heldout": normal_acc, "models": {}}
-    met_expr, met_meta = load_met500()
-    allowed = [MET500_TYPES[c] for c in met_meta.cohort]
-    cp_expr, cp_meta = load_cptac()
-
+def load_external(s: SimpleNamespace) -> SimpleNamespace:
+    """CPTAC-3 and MET500 on the same genes, quantile-normalised to the TCGA training set."""
     def normalised(expr):
-        X = align(expr, genes)
+        X = align(expr, s.genes)
         sh = ~np.isnan(X).all(axis=0)
-        X[:, sh] = quantile_to_reference(X[:, sh], reference_profile(train_filled[:, sh]))
+        X[:, sh] = quantile_to_reference(X[:, sh], reference_profile(s.train_filled[:, sh]))
         return X
 
-    Xm, Xc = normalised(met_expr), normalised(cp_expr)
-    per_site = {}
-    for name, model in (("tumours_only", base), ("with_normal_background", bg)):
-        r = {"tcga_test": evaluate(model, Xte, yte)}
-        pc = model.predict_proba(Xc)
-        r["cptac3"] = score(model.classes_[pc.argmax(1)], pc, model.classes_, [{t} for t in cp_meta.cancer_type])
-        pm = model.predict_proba(Xm)
-        pred = model.classes_[pm.argmax(1)]
-        r["met500"] = score(pred, pm, model.classes_, allowed)
-        hit = np.array([p in a for p, a in zip(pred, allowed)])
-        d = met_meta.assign(correct=hit, predicted=pred)
-        per_site[name] = d.groupby("biopsy_tissue").correct.mean()
-        r["met500_by_biopsy_site"] = d.groupby("biopsy_tissue").correct.agg(["mean", "count"]).query("count >= 15").round(3).rename(
-            columns={"mean": "accuracy", "count": "n"}).reset_index().to_dict("records")
-        liver = d.biopsy_tissue == "liver"
-        r["met500_liver_called_LIHC"] = int(((d.predicted == "LIHC") & liver & ~d.cohort.eq("HCC")).sum())
-        if name == "with_normal_background":
-            # How often the full model's single best guess is a normal tissue, and which one.
-            top = bg_full.classes_[bg_full.predict_proba(Xm).argmax(1)]
-            is_normal = np.char.startswith(top.astype(str), NORMAL)
-            pairs = pd.Series([f"{s} -> {t}" for s, t in zip(met_meta.biopsy_tissue[is_normal], top[is_normal])])
-            r["met500_top_guess_normal"] = {"share": float(is_normal.mean()),
-                                           "by_biopsy_site": pairs.value_counts().loc[lambda s: s > 2].head(10).to_dict()}
-        report["models"][name] = r
-        print(f"{name:24s} TCGA test acc {r['tcga_test']['accuracy']:.3f} | CPTAC-3 {r['cptac3']['accuracy']:.3f} | "
-              f"MET500 {r['met500']['accuracy']:.3f} (top-3 {r['met500']['top3_accuracy']:.3f}) | liver mets called LIHC {r['met500_liver_called_LIHC']}")
+    met_expr, met_meta = load_met500()
+    cp_expr, cp_meta = load_cptac()
+    return SimpleNamespace(Xm=normalised(met_expr), met_meta=met_meta, allowed=[MET500_TYPES[c] for c in met_meta.cohort],
+                           Xc=normalised(cp_expr), cp_meta=cp_meta)
 
-    sites = pd.DataFrame(per_site).loc[[s["biopsy_tissue"] for s in report["models"]["tumours_only"]["met500_by_biopsy_site"]]]
-    n = {s["biopsy_tissue"]: s["n"] for s in report["models"]["tumours_only"]["met500_by_biopsy_site"]}
+
+def evaluate_all(name: str, model, s: SimpleNamespace, e: SimpleNamespace) -> tuple[dict, pd.Series]:
+    """TCGA test, CPTAC-3 and MET500 scores, MET500 by biopsy site and liver metastases called LIHC."""
+    r = {"tcga_test": evaluate(model, s.Xte, s.yte)}
+    pc = model.predict_proba(e.Xc)
+    r["cptac3"] = score(model.classes_[pc.argmax(1)], pc, model.classes_, [{t} for t in e.cp_meta.cancer_type])
+    pm = model.predict_proba(e.Xm)
+    pred = model.classes_[pm.argmax(1)]
+    r["met500"] = score(pred, pm, model.classes_, e.allowed)
+    hit = np.array([p in a for p, a in zip(pred, e.allowed)])
+    d = e.met_meta.assign(correct=hit, predicted=pred)
+    r["met500_by_biopsy_site"] = d.groupby("biopsy_tissue").correct.agg(["mean", "count"]).query("count >= 15").round(3).rename(
+        columns={"mean": "accuracy", "count": "n"}).reset_index().to_dict("records")
+    liver = d.biopsy_tissue == "liver"
+    r["met500_liver_called_LIHC"] = int(((d.predicted == "LIHC") & liver & ~d.cohort.eq("HCC")).sum())
+    print(f"{name:24s} TCGA test acc {r['tcga_test']['accuracy']:.3f} | CPTAC-3 {r['cptac3']['accuracy']:.3f} | "
+          f"MET500 {r['met500']['accuracy']:.3f} (top-3 {r['met500']['top3_accuracy']:.3f}) | liver mets called LIHC {r['met500_liver_called_LIHC']}")
+    return r, d.groupby("biopsy_tissue").correct.mean()
+
+
+def plot_by_site(per_site: dict, report_rows: list, labels: dict, title: str, path: Path):
+    """Grouped bars: MET500 accuracy per biopsy site (sites with at least 15 patients) for each model."""
+    order = [x["biopsy_tissue"] for x in report_rows]
+    n = {x["biopsy_tissue"]: x["n"] for x in report_rows}
+    sites = pd.DataFrame(per_site).loc[order]
+    colors = ["#9aa5a3", "#0a7466", "#b8600e"]
+    width = 0.8 / len(per_site)
     fig, ax = plt.subplots(figsize=(8, 4))
     x = np.arange(len(sites))
-    ax.bar(x - 0.2, sites.tumours_only, 0.4, label="tumours only", color="#9aa5a3")
-    ax.bar(x + 0.2, sites.with_normal_background, 0.4, label="+ GTEx normal tissues", color="#0a7466")
+    for i, name in enumerate(per_site):
+        ax.bar(x + (i - (len(per_site) - 1) / 2) * width, sites[name], width, label=labels[name], color=colors[i])
     ax.set_xticks(x, [f"{s}\n(n={n[s]})" for s in sites.index], fontsize=9)
     ax.set_ylim(0, 1)
     ax.set_ylabel("MET500 accuracy")
-    ax.set_title("Metastases by biopsy site: does a normal-tissue background help?")
+    ax.set_title(title)
     ax.legend()
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
-    fig.savefig(RESULTS / "figures" / "background_met500.png", dpi=150)
+    fig.savefig(path, dpi=150)
 
+
+def main() -> int:
+    s = load_setup()
+    print("fitting: tumours only")
+    base = logistic_pipeline(k=5000, C=0.1).fit(s.Xtr, s.ytr)
+    print("fitting: tumours + normal tissues")
+    bg_full = logistic_pipeline(k=5000, C=0.1).fit(np.vstack([s.Xtr, s.Xg[~s.g_test]]),
+                                                   np.concatenate([s.ytr, s.yg[~s.g_test]]))
+    bg = TumourOnly(bg_full)
+    normal_acc = float((bg_full.predict(s.Xg[s.g_test]) == s.yg[s.g_test]).mean())
+    print(f"  held-out GTEx donors: normal tissue named correctly {normal_acc:.3f} (n={s.g_test.sum()})")
+
+    report = {"genes": int(len(s.genes)), "gtex_samples": int(len(s.gtex_meta)), "gtex_tissues": int(s.gtex_meta.label.nunique()),
+              "normal_tissue_accuracy_heldout": normal_acc, "models": {}}
+    e = load_external(s)
+    per_site = {}
+    for name, model in (("tumours_only", base), ("with_normal_background", bg)):
+        report["models"][name], per_site[name] = evaluate_all(name, model, s, e)
+
+    # How often the full model's single best guess is a normal tissue, and which one.
+    top = bg_full.classes_[bg_full.predict_proba(e.Xm).argmax(1)]
+    is_normal = np.char.startswith(top.astype(str), NORMAL)
+    pairs = pd.Series([f"{b} -> {t}" for b, t in zip(e.met_meta.biopsy_tissue[is_normal], top[is_normal])])
+    report["models"]["with_normal_background"]["met500_top_guess_normal"] = {
+        "share": float(is_normal.mean()), "by_biopsy_site": pairs.value_counts().loc[lambda x: x > 2].head(10).to_dict()}
+
+    plot_by_site(per_site, report["models"]["tumours_only"]["met500_by_biopsy_site"],
+                 {"tumours_only": "tumours only", "with_normal_background": "+ GTEx normal tissues"},
+                 "Metastases by biopsy site: does a normal-tissue background help?",
+                 RESULTS / "figures" / "background_met500.png")
     (RESULTS / "background.json").write_text(json.dumps(report, indent=2, default=float))
     print("saved background.json and figure")
     return 0

@@ -7,7 +7,7 @@
 
 About 3–5% of cancer patients present with metastases whose primary site cannot be found ("cancer of unknown primary"). Gene-expression classifiers are one way to suggest the tissue of origin. This project builds such a classifier on public TCGA data and focuses on doing it honestly: no information from the test set leaks into training, the metrics hold up under class imbalance, and the errors are explained biologically.
 
-> **Status:** stages 0–7 done: data, exploration, models, SHAP interpretation, robustness checks, external validation on two independent cohorts, and a pre-registered normal-tissue background experiment (negative result). See [Roadmap](#roadmap).
+> **Status:** stages 0–8 done: data, exploration, models, SHAP interpretation, robustness checks, external validation on two independent cohorts, and two pre-registered experiments on metastases: a normal-tissue background class (negative) and tumour/normal mixture augmentation (positive). See [Roadmap](#roadmap).
 
 **Highlights**
 
@@ -17,6 +17,7 @@ About 3–5% of cancer patients present with metastases whose primary site canno
 - **50 genes** give over 90% of the full performance; 500 genes match it.
 - **Independent cohorts**, no retraining: 90.8% accuracy (top-3 99.3%) on CPTAC-3 primary tumours from other hospitals; 65.7% (top-3 81%) on MET500 metastases, where the main failure is reading the organ the biopsy came from.
 - Adding GTEx normal tissues as background classes does **not** fix that (MET500 66.4% → 62.9%), and the notebook explains why (in a multinomial model, the LIHC-vs-BRCA comparison ignores the background class).
+- **Training on tumour + normal-tissue mixtures does help:** MET500 66.4% → 69.6% (paired McNemar p = 0.049), liver metastases called liver cancer 41 → 16, primary-tumour accuracy unchanged.
 - Found and fixed a data trap: ~3,000 genes are missing only in certain sequencing batches, so imputing them would let the model recognise the batch instead of the tumour.
 
 ## Results
@@ -143,9 +144,34 @@ Idea: add GTEx normal tissues (3,339 samples, 26 organs) as extra classes such a
 
 ![MET500 accuracy by biopsy site](results/figures/background_met500.png)
 
-The normal classes are learned well (99.5% on held-out GTEx donors) and primary tumours improve slightly, but metastases get worse at every biopsy site. The reason is structural: in multinomial logistic regression, P(LIHC)/P(BRCA) = exp((w_LIHC − w_BRCA)·x) does not involve the background class at all. Liver genes still separate LIHC from BRCA in training, so a breast metastasis in the liver, which is a mixture of both, still leans towards LIHC. The next step is to train on such mixtures (tumour profile blended with another organ's normal tissue, keeping the tumour label).
+The normal classes are learned well (99.5% on held-out GTEx donors) and primary tumours improve slightly, but metastases get worse at every biopsy site. The reason is structural: in multinomial logistic regression, P(LIHC)/P(BRCA) = exp((w_LIHC − w_BRCA)·x) does not involve the background class at all. Liver genes still separate LIHC from BRCA in training, so a breast metastasis in the liver, which is a mixture of both, still leans towards LIHC. Training on such mixtures was tried next (below).
 
 Explanations in Russian: [`notebooks/04_normal_background.ipynb`](notebooks/04_normal_background.ipynb).
+
+## Training on tumour + normal-tissue mixtures
+
+A metastasis biopsy is tumour plus the normal tissue of the host organ, so the model is shown exactly that (`src/mixtures.py`). Each TCGA training tumour gets one extra copy blended with a random GTEx normal sample in linear space, log2((1 − a)·tumour + a·normal + 1) with a ~ U(0.1, 0.6), and keeps its tumour label. Design fixed before looking at results: normal samples from GTEx training donors only, same genes and settings as the tumours-only model, MET500 used only for the final comparison.
+
+**Check without MET500:** validation tumours blended with normal tissue from held-out GTEx donors.
+
+![Accuracy vs share of normal tissue](results/figures/mixtures_synthetic.png)
+
+At 60% normal tissue the usual model drops to 62% while the mixture model keeps 94%. This check is optimistic (same mixing process as training); real metastases are the actual test:
+
+| Model | TCGA test | CPTAC-3 | MET500 | MET500 top-3 | Liver metastases called LIHC |
+|---|---|---|---|---|---|
+| Tumours only | 0.970 | 0.908 | 0.664 | 0.817 | 41 |
+| + normal tissues as classes | 0.972 | 0.926 | 0.629 | 0.801 | 41 |
+| **+ tumour/normal mixtures** | 0.970 | 0.907 | **0.696** | 0.815 | **16** |
+
+![MET500 accuracy by biopsy site](results/figures/mixtures_met500.png)
+
+- Liver biopsies improve most (46% → 57%), and liver metastases mistaken for liver cancer fall 2.5-fold.
+- The two models disagree on 44 patients: the mixture model is right on 29, the baseline on 15 (exact McNemar p = 0.049). A real but modest gain, not a breakthrough.
+- Mixtures change the training examples themselves (a breast tumour with high liver genes, labelled breast), which is what the background class could not do.
+- Not tuned: the normal share and number of mixtures were set once. Tuning them should use synthetic mixtures or validation data, never MET500.
+
+Explanations in Russian: [`notebooks/05_mixture_augmentation.ipynb`](notebooks/05_mixture_augmentation.ipynb).
 
 ## A data trap: platform-dependent missing genes
 
@@ -187,6 +213,7 @@ python -m src.interpret         # SHAP top genes and marker check
 python -m src.robustness        # metastases, unseen sites, gene budget (~15 min)
 python -m src.external          # CPTAC-3 and MET500 (downloads ~950 MB)
 python -m src.background        # GTEx background-class experiment (downloads ~670 MB)
+python -m src.mixtures          # tumour/normal mixture augmentation
 python -m pytest -q tests
 ```
 
@@ -201,6 +228,7 @@ src/interpret.py    per-gene contributions (exact SHAP), known-marker check
 src/robustness.py   metastases, unseen collection sites, gene budget
 src/external.py     independent cohorts: gene-id mapping, per-sample quantile normalisation
 src/background.py   GTEx normal tissues as background classes, compared on all cohorts
+src/mixtures.py     training on tumour/normal mixtures, synthetic check, paired test on MET500
 notebooks/          exploration with explanations
 results/            metrics.json, per-class report, figures
 tests/              unit tests on synthetic data, run by GitHub Actions
@@ -216,7 +244,8 @@ tests/              unit tests on synthetic data, run by GitHub Actions
 - [x] How few genes are enough for 90% of the performance
 - [x] External validation on independent data (CPTAC-3, MET500)
 - [x] Normal-tissue background class (did not help on metastases)
-- [ ] Tumour + normal-tissue mixture augmentation
+- [x] Tumour + normal-tissue mixture augmentation (MET500 +3 points, p = 0.049)
+- [ ] Tune the mixing on validation data; try it with LightGBM and other metastasis cohorts
 - [ ] Small demo app
 
 ## Limitations
