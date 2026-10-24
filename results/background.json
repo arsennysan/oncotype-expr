@@ -1,0 +1,118 @@
+{
+  "genes": 15629,
+  "gtex_samples": 3339,
+  "gtex_tissues": 26,
+  "normal_tissue_accuracy_heldout": 0.9951923076923077,
+  "models": {
+    "tumours_only": {
+      "tcga_test": {
+        "macro_f1": 0.9570841556673764,
+        "balanced_accuracy": 0.9604530824324253,
+        "accuracy": 0.9703856749311295,
+        "top3_accuracy": 0.9972451790633609
+      },
+      "cptac3": {
+        "n": 1266,
+        "accuracy": 0.9083728278041074,
+        "top3_accuracy": 0.9928909952606635
+      },
+      "met500": {
+        "n": 437,
+        "accuracy": 0.6636155606407322,
+        "top3_accuracy": 0.816933638443936
+      },
+      "met500_by_biopsy_site": [
+        {
+          "biopsy_tissue": "bone_marrow",
+          "accuracy": 0.773,
+          "n": 44
+        },
+        {
+          "biopsy_tissue": "liver",
+          "accuracy": 0.455,
+          "n": 123
+        },
+        {
+          "biopsy_tissue": "lung",
+          "accuracy": 0.571,
+          "n": 35
+        },
+        {
+          "biopsy_tissue": "lymph_node",
+          "accuracy": 0.802,
+          "n": 101
+        },
+        {
+          "biopsy_tissue": "skin",
+          "accuracy": 0.75,
+          "n": 20
+        },
+        {
+          "biopsy_tissue": "soft_tissue",
+          "accuracy": 0.753,
+          "n": 81
+        }
+      ],
+      "met500_liver_called_LIHC": 41
+    },
+    "with_normal_background": {
+      "tcga_test": {
+        "macro_f1": 0.9594187360549287,
+        "balanced_accuracy": 0.9613101253428732,
+        "accuracy": 0.971763085399449,
+        "top3_accuracy": 0.9972451790633609
+      },
+      "cptac3": {
+        "n": 1266,
+        "accuracy": 0.9257503949447078,
+        "top3_accuracy": 0.9873617693522907
+      },
+      "met500": {
+        "n": 437,
+        "accuracy": 0.6292906178489702,
+        "top3_accuracy": 0.8009153318077803
+      },
+      "met500_by_biopsy_site": [
+        {
+          "biopsy_tissue": "bone_marrow",
+          "accuracy": 0.705,
+          "n": 44
+        },
+        {
+          "biopsy_tissue": "liver",
+          "accuracy": 0.431,
+          "n": 123
+        },
+        {
+          "biopsy_tissue": "lung",
+          "accuracy": 0.514,
+          "n": 35
+        },
+        {
+          "biopsy_tissue": "lymph_node",
+          "accuracy": 0.762,
+          "n": 101
+        },
+        {
+          "biopsy_tissue": "skin",
+          "accuracy": 0.65,
+          "n": 20
+        },
+        {
+          "biopsy_tissue": "soft_tissue",
+          "accuracy": 0.728,
+          "n": 81
+        }
+      ],
+      "met500_liver_called_LIHC": 41,
+      "met500_top_guess_normal": {
+        "share": 0.08466819221967964,
+        "by_biopsy_site": {
+          "liver -> NORMAL_Liver": 7,
+          "bone_marrow -> NORMAL_Blood": 5,
+          "lung -> NORMAL_Lung": 3
+        }
+      }
+    }
+  }
+}

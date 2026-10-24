@@ -143,7 +143,7 @@ def load_met500() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def align(expr: pd.DataFrame, genes: np.ndarray) -> np.ndarray:
     """Columns in the model's gene order; genes the cohort lacks become NaN (imputed by the model)."""
-    return expr.reindex(columns=genes).to_numpy(np.float32)
+    return expr.reindex(columns=genes).to_numpy(np.float32, copy=True)
 
 
 def evaluate_cohort(name, model, genes, expr, allowed, X_train, used) -> tuple[dict, np.ndarray]:

@@ -7,7 +7,7 @@
 
 About 3–5% of cancer patients present with metastases whose primary site cannot be found ("cancer of unknown primary"). Gene-expression classifiers are one way to suggest the tissue of origin. This project builds such a classifier on public TCGA data and focuses on doing it honestly: no information from the test set leaks into training, the metrics hold up under class imbalance, and the errors are explained biologically.
 
-> **Status:** stages 0–6 done: data, exploration, models, SHAP interpretation, robustness checks and external validation on two independent cohorts. See [Roadmap](#roadmap).
+> **Status:** stages 0–7 done: data, exploration, models, SHAP interpretation, robustness checks, external validation on two independent cohorts, and a pre-registered normal-tissue background experiment (negative result). See [Roadmap](#roadmap).
 
 **Highlights**
 
@@ -16,6 +16,7 @@ About 3–5% of cancer patients present with metastases whose primary site canno
 - **Metastases** it never saw: 92% accuracy, 98% top-3. **Hospitals** it never saw: macro-F1 drops only from 0.938 to 0.916.
 - **50 genes** give over 90% of the full performance; 500 genes match it.
 - **Independent cohorts**, no retraining: 90.8% accuracy (top-3 99.3%) on CPTAC-3 primary tumours from other hospitals; 65.7% (top-3 81%) on MET500 metastases, where the main failure is reading the organ the biopsy came from.
+- Adding GTEx normal tissues as background classes does **not** fix that (MET500 66.4% → 62.9%), and the notebook explains why (in a multinomial model, the LIHC-vs-BRCA comparison ignores the background class).
 - Found and fixed a data trap: ~3,000 genes are missing only in certain sequencing batches, so imputing them would let the model recognise the batch instead of the tumour.
 
 ## Results
@@ -127,9 +128,24 @@ Each external sample is **quantile-normalised to the TCGA training distribution 
 - **Normalisation is essential.** On raw values the model is close to chance; matching the scale recovers almost all of the performance on CPTAC-3.
 - **CPTAC-3:** every type except glioblastoma is recognised at 91–100%. The main error is glioblastoma → low-grade glioma (54 of 191), the same tissue at a different grade; without that pair accuracy would be about 95%.
 - **MET500:** metastases biopsied from the liver are the worst case (44% accuracy vs 80% for lymph nodes). Breast cancer in the liver is called liver cancer 16 times, and **55 of 150 errors name the organ the biopsy was taken from**. This confirms on independent data what the SHAP analysis and the TCGA metastases suggested: the model partly reads surrounding normal tissue.
-- Possible fixes: train with normal tissues (e.g. GTEx) as a background class, deconvolve tumour from normal signal, or train on within-sample ranks.
+- Possible fixes: train on tumour + normal-tissue mixtures, deconvolve tumour from normal signal, or train on within-sample ranks. A normal-tissue background class was tried next and did not help (below).
 
 Explanations in Russian: [`notebooks/03_external_validation.ipynb`](notebooks/03_external_validation.ipynb).
+
+## Normal tissues as a background class (negative result)
+
+Idea: add GTEx normal tissues (3,339 samples, 26 organs) as extra classes such as `NORMAL_Liver`, so organ signal has somewhere to go; at prediction time drop them and renormalise over the 32 tumour types (`src/background.py`). Design fixed before looking at results: same genes and settings for both models, genes restricted to those present in both TCGA and GTEx (15,629), GTEx normalised like external data, MET500 used only for the final comparison.
+
+| Model | TCGA test | CPTAC-3 | MET500 | MET500 top-3 | Liver metastases called LIHC |
+|---|---|---|---|---|---|
+| Tumours only | 0.970 | 0.908 | **0.664** | 0.817 | 41 |
+| + GTEx normal tissues | 0.972 | **0.926** | 0.629 | 0.801 | 41 |
+
+![MET500 accuracy by biopsy site](results/figures/background_met500.png)
+
+The normal classes are learned well (99.5% on held-out GTEx donors) and primary tumours improve slightly, but metastases get worse at every biopsy site. The reason is structural: in multinomial logistic regression, P(LIHC)/P(BRCA) = exp((w_LIHC − w_BRCA)·x) does not involve the background class at all. Liver genes still separate LIHC from BRCA in training, so a breast metastasis in the liver, which is a mixture of both, still leans towards LIHC. The next step is to train on such mixtures (tumour profile blended with another organ's normal tissue, keeping the tumour label).
+
+Explanations in Russian: [`notebooks/04_normal_background.ipynb`](notebooks/04_normal_background.ipynb).
 
 ## A data trap: platform-dependent missing genes
 
@@ -152,6 +168,7 @@ The first version dropped every gene with any missing value and lost about 4,000
 
 - 9,676 primary solid tumours from 32 cancer types; 17,456 genes after filtering.
 - 394 metastases are kept aside for the robustness test.
+- Normal tissues: [GTEx](https://gtexportal.org/) via the UCSC Toil Xena hub (RSEM normalised counts).
 - External cohorts: [CPTAC-3](https://proteomics.cancer.gov/programs/cptac) (via the GDC Xena hub) and [MET500](https://met500.path.med.umich.edu/) (via the UCSC public Xena hub).
 - Acute myeloid leukaemia (LAML) is not included: it is a blood cancer with no solid primary tumour sample.
 
@@ -169,6 +186,7 @@ python -m src.train             # ~2–3 min
 python -m src.interpret         # SHAP top genes and marker check
 python -m src.robustness        # metastases, unseen sites, gene budget (~15 min)
 python -m src.external          # CPTAC-3 and MET500 (downloads ~950 MB)
+python -m src.background        # GTEx background-class experiment (downloads ~670 MB)
 python -m pytest -q tests
 ```
 
@@ -182,6 +200,7 @@ src/train.py        model comparison, single test evaluation, figures
 src/interpret.py    per-gene contributions (exact SHAP), known-marker check
 src/robustness.py   metastases, unseen collection sites, gene budget
 src/external.py     independent cohorts: gene-id mapping, per-sample quantile normalisation
+src/background.py   GTEx normal tissues as background classes, compared on all cohorts
 notebooks/          exploration with explanations
 results/            metrics.json, per-class report, figures
 tests/              unit tests on synthetic data, run by GitHub Actions
@@ -196,7 +215,8 @@ tests/              unit tests on synthetic data, run by GitHub Actions
 - [x] Robustness: TCGA metastases, held-out collection sites
 - [x] How few genes are enough for 90% of the performance
 - [x] External validation on independent data (CPTAC-3, MET500)
-- [ ] Normal-tissue background class to stop the model reading the biopsy organ
+- [x] Normal-tissue background class (did not help on metastases)
+- [ ] Tumour + normal-tissue mixture augmentation
 - [ ] Small demo app
 
 ## Limitations
