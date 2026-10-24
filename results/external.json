@@ -1,0 +1,251 @@
+{
+  "model": "logistic C=0.1",
+  "cptac3": {
+    "n_samples": 1266,
+    "model_genes_present": 4475,
+    "model_genes": 5000,
+    "raw": {
+      "n": 1266,
+      "accuracy": 0.13428120063191154,
+      "top3_accuracy": 0.5718799368088467
+    },
+    "quantile_normalised": {
+      "n": 1266,
+      "accuracy": 0.9075829383886256,
+      "top3_accuracy": 0.9928909952606635
+    },
+    "per_type": [
+      {
+        "cancer_type": "GBM",
+        "correct": 136,
+        "n": 191
+      },
+      {
+        "cancer_type": "HNSC",
+        "correct": 102,
+        "n": 109
+      },
+      {
+        "cancer_type": "KIRC",
+        "correct": 213,
+        "n": 223
+      },
+      {
+        "cancer_type": "KIRP",
+        "correct": 9,
+        "n": 9
+      },
+      {
+        "cancer_type": "LUAD",
+        "correct": 222,
+        "n": 227
+      },
+      {
+        "cancer_type": "LUSC",
+        "correct": 101,
+        "n": 109
+      },
+      {
+        "cancer_type": "PAAD",
+        "correct": 150,
+        "n": 161
+      },
+      {
+        "cancer_type": "UCEC",
+        "correct": 216,
+        "n": 237
+      }
+    ],
+    "top_errors": {
+      "GBM -> LGG": 54,
+      "UCEC -> OV": 9,
+      "LUSC -> LUAD": 8,
+      "KIRC -> KIRP": 7,
+      "PAAD -> LUAD": 6,
+      "LUAD -> LUSC": 5,
+      "PAAD -> STAD": 5,
+      "UCEC -> LUAD": 5,
+      "HNSC -> ESCA": 4,
+      "KIRC -> KICH": 2
+    }
+  },
+  "met500": {
+    "n_samples": 437,
+    "model_genes_present": 4358,
+    "model_genes": 5000,
+    "raw": {
+      "n": 437,
+      "accuracy": 0.06407322654462243,
+      "top3_accuracy": 0.2402745995423341
+    },
+    "quantile_normalised": {
+      "n": 437,
+      "accuracy": 0.6567505720823799,
+      "top3_accuracy": 0.8100686498855835
+    },
+    "per_cohort": [
+      {
+        "cohort": "ACC",
+        "correct": 8,
+        "n": 8
+      },
+      {
+        "cohort": "BLCA",
+        "correct": 8,
+        "n": 16
+      },
+      {
+        "cohort": "BRCA",
+        "correct": 69,
+        "n": 92
+      },
+      {
+        "cohort": "CHOL",
+        "correct": 11,
+        "n": 26
+      },
+      {
+        "cohort": "COLO",
+        "correct": 7,
+        "n": 11
+      },
+      {
+        "cohort": "ESCA",
+        "correct": 0,
+        "n": 12
+      },
+      {
+        "cohort": "GBM",
+        "correct": 5,
+        "n": 5
+      },
+      {
+        "cohort": "HCC",
+        "correct": 5,
+        "n": 5
+      },
+      {
+        "cohort": "HNSC",
+        "correct": 10,
+        "n": 24
+      },
+      {
+        "cohort": "KDNY",
+        "correct": 5,
+        "n": 7
+      },
+      {
+        "cohort": "LUNG",
+        "correct": 19,
+        "n": 24
+      },
+      {
+        "cohort": "OV",
+        "correct": 9,
+        "n": 13
+      },
+      {
+        "cohort": "PAAD",
+        "correct": 5,
+        "n": 14
+      },
+      {
+        "cohort": "PRAD",
+        "correct": 69,
+        "n": 91
+      },
+      {
+        "cohort": "SARC",
+        "correct": 43,
+        "n": 58
+      },
+      {
+        "cohort": "SKCM",
+        "correct": 9,
+        "n": 13
+      },
+      {
+        "cohort": "STAD",
+        "correct": 2,
+        "n": 8
+      },
+      {
+        "cohort": "TGCT",
+        "correct": 0,
+        "n": 3
+      },
+      {
+        "cohort": "THCA",
+        "correct": 1,
+        "n": 4
+      },
+      {
+        "cohort": "THYM",
+        "correct": 2,
+        "n": 3
+      }
+    ],
+    "by_biopsy_site": [
+      {
+        "biopsy_tissue": "bone_marrow",
+        "accuracy": 0.773,
+        "n": 44
+      },
+      {
+        "biopsy_tissue": "liver",
+        "accuracy": 0.439,
+        "n": 123
+      },
+      {
+        "biopsy_tissue": "lung",
+        "accuracy": 0.571,
+        "n": 35
+      },
+      {
+        "biopsy_tissue": "lymph_node",
+        "accuracy": 0.802,
+        "n": 101
+      },
+      {
+        "biopsy_tissue": "skin",
+        "accuracy": 0.75,
+        "n": 20
+      },
+      {
+        "biopsy_tissue": "soft_tissue",
+        "accuracy": 0.741,
+        "n": 81
+      }
+    ],
+    "by_library": [
+      {
+        "polyA": false,
+        "accuracy": 0.598,
+        "n": 97
+      },
+      {
+        "polyA": true,
+        "accuracy": 0.674,
+        "n": 340
+      }
+    ],
+    "predicted_as_biopsy_organ": {
+      "errors": 150,
+      "named_the_biopsy_organ": 55
+    },
+    "top_errors": {
+      "BRCA -> LIHC": 16,
+      "HNSC -> LUSC": 8,
+      "CHOL -> LIHC": 7,
+      "PRAD -> LIHC": 5,
+      "HNSC -> CESC": 4,
+      "CHOL -> PAAD": 4,
+      "PRAD -> BRCA": 4,
+      "ESCA -> LIHC": 4,
+      "SARC -> MESO": 3,
+      "SARC -> LUSC": 3,
+      "STAD -> SARC": 3,
+      "PRAD -> DLBC": 3
+    }
+  }
+}

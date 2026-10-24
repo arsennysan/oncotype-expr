@@ -7,7 +7,7 @@
 
 About 3–5% of cancer patients present with metastases whose primary site cannot be found ("cancer of unknown primary"). Gene-expression classifiers are one way to suggest the tissue of origin. This project builds such a classifier on public TCGA data and focuses on doing it honestly: no information from the test set leaks into training, the metrics hold up under class imbalance, and the errors are explained biologically.
 
-> **Status:** stages 0–5 done: data, exploration, models, SHAP interpretation, robustness on metastases, unseen hospitals and small gene panels. See [Roadmap](#roadmap).
+> **Status:** stages 0–6 done: data, exploration, models, SHAP interpretation, robustness checks and external validation on two independent cohorts. See [Roadmap](#roadmap).
 
 **Highlights**
 
@@ -15,6 +15,7 @@ About 3–5% of cancer patients present with metastases whose primary site canno
 - The model's top genes are textbook tissue markers: STAR, MLANA, KLK2, TG and DBH rank **#1** for their tissue; ALB, WT1 and SFTPB rank #2.
 - **Metastases** it never saw: 92% accuracy, 98% top-3. **Hospitals** it never saw: macro-F1 drops only from 0.938 to 0.916.
 - **50 genes** give over 90% of the full performance; 500 genes match it.
+- **Independent cohorts**, no retraining: 90.8% accuracy (top-3 99.3%) on CPTAC-3 primary tumours from other hospitals; 65.7% (top-3 81%) on MET500 metastases, where the main failure is reading the organ the biopsy came from.
 - Found and fixed a data trap: ~3,000 genes are missing only in certain sequencing batches, so imputing them would let the model recognise the batch instead of the tumour.
 
 ## Results
@@ -106,6 +107,30 @@ The drop is small: the model uses a little site-specific signal, but its main si
 
 Explanations in Russian: [`notebooks/02_interpret_and_robustness.ipynb`](notebooks/02_interpret_and_robustness.ipynb).
 
+## External validation on independent data
+
+The TCGA-trained model, unchanged, applied to two cohorts collected by other groups with other pipelines (`src/external.py`):
+
+- **CPTAC-3**: 1,266 primary tumours of 8 types from the prospective CPTAC project (GDC STAR pipeline, log2(TPM + 1)).
+- **MET500**: 437 metastatic biopsies from the University of Michigan (Robinson et al., *Nature* 2017; log2(TPM + 0.001), partly exome-capture libraries).
+
+Each external sample is **quantile-normalised to the TCGA training distribution on its own**: its gene ranking is kept and the values are replaced by those of a typical TCGA sample. No information from the rest of the cohort or its labels is used. Genes missing from the external data (10–13% of the model's genes, due to renamed or differently annotated genes) are filled with the TCGA training median.
+
+| Cohort | Raw values | Quantile-normalised | Top-3 (normalised) |
+|---|---|---|---|
+| TCGA test set (reference) | | 0.970 | 0.998 |
+| **CPTAC-3**, primary tumours | 0.134 | **0.908** | 0.993 |
+| **MET500**, metastases | 0.064 | **0.657** | 0.810 |
+
+![CPTAC-3 confusion matrix](results/figures/external_cptac3.png)
+
+- **Normalisation is essential.** On raw values the model is close to chance; matching the scale recovers almost all of the performance on CPTAC-3.
+- **CPTAC-3:** every type except glioblastoma is recognised at 91–100%. The main error is glioblastoma → low-grade glioma (54 of 191), the same tissue at a different grade; without that pair accuracy would be about 95%.
+- **MET500:** metastases biopsied from the liver are the worst case (44% accuracy vs 80% for lymph nodes). Breast cancer in the liver is called liver cancer 16 times, and **55 of 150 errors name the organ the biopsy was taken from**. This confirms on independent data what the SHAP analysis and the TCGA metastases suggested: the model partly reads surrounding normal tissue.
+- Possible fixes: train with normal tissues (e.g. GTEx) as a background class, deconvolve tumour from normal signal, or train on within-sample ranks.
+
+Explanations in Russian: [`notebooks/03_external_validation.ipynb`](notebooks/03_external_validation.ipynb).
+
 ## A data trap: platform-dependent missing genes
 
 The first version dropped every gene with any missing value and lost about 4,000 genes, including well-known markers. A closer look showed two different groups:
@@ -127,6 +152,7 @@ The first version dropped every gene with any missing value and lost about 4,000
 
 - 9,676 primary solid tumours from 32 cancer types; 17,456 genes after filtering.
 - 394 metastases are kept aside for the robustness test.
+- External cohorts: [CPTAC-3](https://proteomics.cancer.gov/programs/cptac) (via the GDC Xena hub) and [MET500](https://met500.path.med.umich.edu/) (via the UCSC public Xena hub).
 - Acute myeloid leukaemia (LAML) is not included: it is a blood cancer with no solid primary tumour sample.
 
 Data is downloaded by a script and never committed.
@@ -142,6 +168,7 @@ python -m src.prepare           # ~1 min
 python -m src.train             # ~2–3 min
 python -m src.interpret         # SHAP top genes and marker check
 python -m src.robustness        # metastases, unseen sites, gene budget (~15 min)
+python -m src.external          # CPTAC-3 and MET500 (downloads ~950 MB)
 python -m pytest -q tests
 ```
 
@@ -154,6 +181,7 @@ src/models.py       pipelines (top-variance genes → scaling → classifier) an
 src/train.py        model comparison, single test evaluation, figures
 src/interpret.py    per-gene contributions (exact SHAP), known-marker check
 src/robustness.py   metastases, unseen collection sites, gene budget
+src/external.py     independent cohorts: gene-id mapping, per-sample quantile normalisation
 notebooks/          exploration with explanations
 results/            metrics.json, per-class report, figures
 tests/              unit tests on synthetic data, run by GitHub Actions
@@ -167,12 +195,13 @@ tests/              unit tests on synthetic data, run by GitHub Actions
 - [x] SHAP interpretation: does the model recover known tissue markers?
 - [x] Robustness: TCGA metastases, held-out collection sites
 - [x] How few genes are enough for 90% of the performance
-- [ ] External validation on independent data (other cohorts, CCLE cell lines)
+- [x] External validation on independent data (CPTAC-3, MET500)
+- [ ] Normal-tissue background class to stop the model reading the biopsy organ
 - [ ] Small demo app
 
 ## Limitations
 
-This is a learning and research project, **not a diagnostic tool**. TCGA tumours are high-quality research samples; real clinical samples are noisier, and accuracy on metastases is lower than on primary tumours (92% vs 97%), and only 26 non-melanoma metastases were available.
+This is a learning and research project, **not a diagnostic tool**. TCGA tumours are high-quality research samples; real clinical samples are noisier, and accuracy on metastases is lower than on primary tumours (92% vs 97%), and on independent metastases (MET500) it drops to 66%, mostly because of normal tissue from the biopsy site.
 
 ## Credits
 

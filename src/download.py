@@ -23,8 +23,8 @@ FILES = {
 RAW = Path(__file__).resolve().parent.parent / "data" / "raw"
 
 
-def fetch(name: str, remote: str, size: int, attempts: int = 8) -> None:
-    target = RAW / name
+def fetch(name: str, remote: str, size: int, attempts: int = 8, hub: str = HUB, dest: Path = RAW) -> None:
+    target = dest / name
     if target.exists() and target.stat().st_size == size:
         print(f"ok      {name} (already downloaded)")
         return
@@ -35,7 +35,7 @@ def fetch(name: str, remote: str, size: int, attempts: int = 8) -> None:
         done = tmp.stat().st_size if tmp.exists() else 0
         if done >= size:
             break
-        req = urllib.request.Request(HUB + remote, headers={"Range": f"bytes={done}-"} if done else {})
+        req = urllib.request.Request(hub + remote, headers={"Range": f"bytes={done}-"} if done else {})
         try:
             with urllib.request.urlopen(req, timeout=60) as resp, open(tmp, "ab" if done else "wb") as out:
                 if done and resp.status != 206:
