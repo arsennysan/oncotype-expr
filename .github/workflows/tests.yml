@@ -21,5 +21,5 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
       # The unit tests run on small synthetic tables, so only the core libraries are needed.
-      - run: pip install numpy pandas scikit-learn pytest
+      - run: pip install numpy pandas scikit-learn matplotlib pytest
       - run: python -m pytest -q tests
