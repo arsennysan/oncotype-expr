@@ -4,7 +4,9 @@ Steps (each is a small function so it can be tested on its own):
   1. parse TCGA barcodes: patient, sample type, tissue source site;
   2. keep one primary solid tumour (code 01) per patient, labelled by cancer type;
   3. split patients into train / validation / test, stratified by cancer type;
-  4. drop genes with missing values or that are barely expressed *in the training set only*.
+  4. choose genes on the training set only: drop platform-dependent genes (missing in whole
+     batches of samples) and genes that are never expressed. Rare remaining gaps are imputed
+     inside the model pipeline.
 
 Metastases (code 06) are kept aside for a later robustness check.
 
@@ -63,21 +65,35 @@ def split_patients(samples: pd.DataFrame, test_size: float = 0.15, val_size: flo
     return split
 
 
-def gene_symbol(row_id: str) -> str:
-    """Xena row ids look like 'TP53|7157'; unnamed genes come as '?|100130426'."""
-    return row_id.split("|")[0]
+def gene_symbol(row_id: str) -> str | None:
+    """Row ids are gene symbols ('TP53'), or bare Entrez ids ('100130426') for unnamed genes.
+    Some Xena tables use 'TP53|7157'; both forms are handled. Unnamed genes give None."""
+    sym = row_id.split("|")[0]
+    return None if sym in ("?", "") or sym.isdigit() else sym
 
 
-def filter_genes(expr: pd.DataFrame, train_samples: list[str], min_mean: float = 1.0) -> pd.DataFrame:
-    """Drop genes with any missing value, unnamed genes and genes whose mean log2 expression
-    in the training samples is below `min_mean`. Only training samples decide, so the
-    validation and test sets never influence the gene list."""
-    expr = expr.dropna(axis=0, how="any")
+def filter_genes(expr: pd.DataFrame, train_samples: list[str], max_missing: float = 0.01,
+                 min_level: float = 1.0, min_share: float = 0.005) -> pd.DataFrame:
+    """Choose genes using the training samples only, so validation and test data never
+    influence the gene list.
+
+    - Unnamed and duplicated genes are dropped.
+    - Genes missing in more than `max_missing` of training tumours are dropped. In this dataset
+      such gaps follow the sequencing platform: ~3,000 genes are absent for whole batches of six
+      cancer types. Filling them in would let a model learn the platform instead of the biology.
+      Rarer gaps (under 1%) are kept and imputed later, inside the model pipeline.
+    - Genes must reach `min_level` (log2) in at least `min_share` of training tumours. A share,
+      not a mean, keeps tissue-specific markers that are high in one small cancer type only.
+    """
     symbols = expr.index.map(gene_symbol)
-    expr = expr[(symbols != "?") & ~pd.Index(symbols).duplicated(keep="first")]
-    expr.index = expr.index.map(gene_symbol)
-    keep = expr[train_samples].mean(axis=1) >= min_mean
-    return expr[keep]
+    named = pd.notna(symbols)
+    expr = expr[named]
+    expr.index = symbols[named]
+    expr = expr[~expr.index.duplicated(keep="first")]
+    train = expr[train_samples]
+    missing_ok = train.isna().mean(axis=1) <= max_missing
+    expressed = (train >= min_level).mean(axis=1) >= min_share
+    return expr[missing_ok & expressed]
 
 
 def read_expression(path: Path, wanted: set[str]) -> pd.DataFrame:
@@ -108,7 +124,7 @@ def main() -> int:
     print(f"expression read: {expr.shape[0]} genes x {expr.shape[1]} samples")
     train_ids = primary.loc[primary["split"] == "train", "sample"].tolist()
     expr = filter_genes(expr, train_ids)
-    print(f"genes after filtering: {expr.shape[0]}")
+    print(f"genes after filtering: {expr.shape[0]}, of which with rare gaps (imputed later): {int(expr.isna().any(axis=1).sum())}")
 
     meta = pd.concat([primary, metastases], ignore_index=True)
     meta.to_csv(OUT / "samples.csv", index=False)

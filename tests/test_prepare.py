@@ -56,12 +56,25 @@ def test_split_is_reproducible():
     assert split_patients(cohort).equals(split_patients(cohort))
 
 
+def test_gene_symbol_handles_both_id_formats():
+    from src.prepare import gene_symbol
+    assert gene_symbol("TP53") == "TP53"
+    assert gene_symbol("TP53|7157") == "TP53"
+    assert gene_symbol("NKX2-1") == "NKX2-1"
+    assert gene_symbol("100130426") is None
+    assert gene_symbol("?|100130426") is None
+
+
 def test_filter_genes_uses_training_samples_only():
-    expr = pd.DataFrame(
-        {"train1": [5.0, 0.0, 3.0, 2.0, 4.0], "train2": [5.0, 0.0, 3.0, 2.0, 4.0], "test1": [5.0, 9.0, 3.0, np.nan, 4.0]},
-        index=["TP53|7157", "XIST|7503", "?|100130426", "MYC|4609", "TP53|7157"],
-    )
-    out = filter_genes(expr, ["train1", "train2"])
-    # XIST is high only in the test sample, so it must be dropped; MYC has a missing value;
-    # the unnamed gene and the duplicated symbol go too.
-    assert out.index.tolist() == ["TP53"]
+    train = [f"tr{i}" for i in range(200)]
+    expr = pd.DataFrame(0.0, index=["TP53", "XIST", "100130426", "KLK3", "PLATFORM", "TP53"], columns=train + ["test1"])
+    expr.loc["TP53", train] = 5.0
+    expr.loc["XIST", "test1"] = 9.0            # high only in the test sample
+    expr.loc["100130426", train] = 4.0         # unnamed gene
+    expr.loc["KLK3", train[:10]] = 15.0        # high in 5% of training tumours only (a tissue marker)
+    expr.loc["KLK3", train[10]] = np.nan       # one rare gap: kept, imputed later
+    expr.loc["PLATFORM", train] = 3.0
+    expr.loc["PLATFORM", train[:20]] = np.nan  # missing in 10%: a platform-dependent gene
+    out = filter_genes(expr, train)
+    assert out.index.tolist() == ["TP53", "KLK3"]
+    assert out.loc["KLK3"].isna().sum() == 1

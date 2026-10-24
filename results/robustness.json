@@ -1,0 +1,211 @@
+{
+  "model": "logistic C=0.1",
+  "metastases": {
+    "n": 394,
+    "accuracy": 0.9238578680203046,
+    "top3_accuracy": 0.9796954314720813,
+    "melanoma": {
+      "n": 368,
+      "accuracy": 0.9320652173913043
+    },
+    "other": {
+      "n": 26,
+      "accuracy": 0.8076923076923077
+    },
+    "other_cases": [
+      {
+        "sample": "TCGA-AC-A6IX-06",
+        "cancer_type": "BRCA",
+        "predicted": "BRCA"
+      },
+      {
+        "sample": "TCGA-BH-A18V-06",
+        "cancer_type": "BRCA",
+        "predicted": "BRCA"
+      },
+      {
+        "sample": "TCGA-BH-A1ES-06",
+        "cancer_type": "BRCA",
+        "predicted": "LIHC"
+      },
+      {
+        "sample": "TCGA-BH-A1FE-06",
+        "cancer_type": "BRCA",
+        "predicted": "MESO"
+      },
+      {
+        "sample": "TCGA-DE-A4MD-06",
+        "cancer_type": "THCA",
+        "predicted": "THCA"
+      },
+      {
+        "sample": "TCGA-E2-A15A-06",
+        "cancer_type": "BRCA",
+        "predicted": "BRCA"
+      },
+      {
+        "sample": "TCGA-E2-A15E-06",
+        "cancer_type": "BRCA",
+        "predicted": "BRCA"
+      },
+      {
+        "sample": "TCGA-E2-A15K-06",
+        "cancer_type": "BRCA",
+        "predicted": "BRCA"
+      },
+      {
+        "sample": "TCGA-EM-A2CS-06",
+        "cancer_type": "THCA",
+        "predicted": "THCA"
+      },
+      {
+        "sample": "TCGA-EM-A2P1-06",
+        "cancer_type": "THCA",
+        "predicted": "THCA"
+      },
+      {
+        "sample": "TCGA-EM-A3FQ-06",
+        "cancer_type": "THCA",
+        "predicted": "THCA"
+      },
+      {
+        "sample": "TCGA-EM-A3SU-06",
+        "cancer_type": "THCA",
+        "predicted": "THCA"
+      },
+      {
+        "sample": "TCGA-HM-A6W2-06",
+        "cancer_type": "CESC",
+        "predicted": "UCEC"
+      },
+      {
+        "sample": "TCGA-HZ-A9TJ-06",
+        "cancer_type": "PAAD",
+        "predicted": "PAAD"
+      },
+      {
+        "sample": "TCGA-J8-A3O2-06",
+        "cancer_type": "THCA",
+        "predicted": "THCA"
+      },
+      {
+        "sample": "TCGA-J8-A3YH-06",
+        "cancer_type": "THCA",
+        "predicted": "THCA"
+      },
+      {
+        "sample": "TCGA-J8-A4HW-06",
+        "cancer_type": "THCA",
+        "predicted": "THCA"
+      },
+      {
+        "sample": "TCGA-KU-A6H7-06",
+        "cancer_type": "HNSC",
+        "predicted": "HNSC"
+      },
+      {
+        "sample": "TCGA-NH-A8F7-06",
+        "cancer_type": "COAD",
+        "predicted": "COAD"
+      },
+      {
+        "sample": "TCGA-RW-A686-06",
+        "cancer_type": "PCPG",
+        "predicted": "PCPG"
+      },
+      {
+        "sample": "TCGA-SI-A71O-06",
+        "cancer_type": "SARC",
+        "predicted": "LUAD"
+      },
+      {
+        "sample": "TCGA-SR-A6MX-06",
+        "cancer_type": "PCPG",
+        "predicted": "PCPG"
+      },
+      {
+        "sample": "TCGA-UC-A7PG-06",
+        "cancer_type": "CESC",
+        "predicted": "CESC"
+      },
+      {
+        "sample": "TCGA-UF-A71A-06",
+        "cancer_type": "HNSC",
+        "predicted": "HNSC"
+      },
+      {
+        "sample": "TCGA-V1-A9O5-06",
+        "cancer_type": "PRAD",
+        "predicted": "PRAD"
+      },
+      {
+        "sample": "TCGA-V5-A7RC-06",
+        "cancer_type": "ESCA",
+        "predicted": "LUSC"
+      }
+    ],
+    "melanoma_errors": {
+      "SARC": 12,
+      "UVM": 4,
+      "UCS": 3,
+      "DLBC": 2,
+      "LUAD": 2,
+      "CHOL": 1,
+      "ACC": 1
+    }
+  },
+  "sites": {
+    "n_tumours": 8224,
+    "n_sites": 680,
+    "random_split": {
+      "macro_f1": 0.9383318203782782,
+      "accuracy": 0.9567120622568094,
+      "scored": 8224,
+      "skipped_unseen_type": 0
+    },
+    "unseen_sites": {
+      "macro_f1": 0.9162216743590709,
+      "accuracy": 0.9415126459143969,
+      "scored": 8224,
+      "skipped_unseen_type": 0
+    }
+  },
+  "gene_budget": [
+    {
+      "genes": 10,
+      "val_macro_f1": 0.45350409639661526
+    },
+    {
+      "genes": 25,
+      "val_macro_f1": 0.8020896843383326
+    },
+    {
+      "genes": 50,
+      "val_macro_f1": 0.9094644365905363
+    },
+    {
+      "genes": 100,
+      "val_macro_f1": 0.9224905790968658
+    },
+    {
+      "genes": 250,
+      "val_macro_f1": 0.9300843338795718
+    },
+    {
+      "genes": 500,
+      "val_macro_f1": 0.9455569498366576
+    },
+    {
+      "genes": 1000,
+      "val_macro_f1": 0.9460682742517889
+    },
+    {
+      "genes": 2500,
+      "val_macro_f1": 0.9438473440069258
+    },
+    {
+      "genes": 5000,
+      "val_macro_f1": 0.9398855100351164
+    }
+  ]
+}

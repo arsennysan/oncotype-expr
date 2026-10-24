@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, top_k_accuracy_score
 from sklearn.pipeline import Pipeline
@@ -29,6 +30,8 @@ class TopVarianceGenes(BaseEstimator, TransformerMixin):
 
 def logistic_pipeline(k: int = 5000, C: float = 0.1) -> Pipeline:
     return Pipeline([
+        # Rare gaps (<1% of tumours) are filled with the training median of each gene.
+        ("impute", SimpleImputer(strategy="median")),
         ("genes", TopVarianceGenes(k)),
         ("scale", StandardScaler()),
         ("clf", LogisticRegression(C=C, max_iter=3000, class_weight="balanced")),
@@ -40,7 +43,8 @@ def lightgbm_pipeline(k: int = 2000, **params) -> Pipeline:
 
     defaults = dict(n_estimators=400, learning_rate=0.05, num_leaves=31, subsample=0.8, subsample_freq=1,
                     colsample_bytree=0.3, class_weight="balanced", random_state=SEED, n_jobs=-1, verbose=-1)
-    return Pipeline([("genes", TopVarianceGenes(k)), ("clf", LGBMClassifier(**(defaults | params)))])
+    return Pipeline([("impute", SimpleImputer(strategy="median")), ("genes", TopVarianceGenes(k)),
+                     ("clf", LGBMClassifier(**(defaults | params)))])
 
 
 def evaluate(model, X, y) -> dict:

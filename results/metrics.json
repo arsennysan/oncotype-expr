@@ -1,5 +1,5 @@
 {
-  "chosen_model": "logistic C=0.01",
+  "chosen_model": "logistic C=0.1",
   "validation": {
     "majority class": {
       "macro_f1": 0.006342821782178218,
@@ -8,28 +8,28 @@
       "top3_accuracy": 0.12672176308539945
     },
     "logistic C=0.01": {
-      "macro_f1": 0.9365672292746186,
-      "balanced_accuracy": 0.9449720308298627,
-      "accuracy": 0.9545454545454546,
-      "top3_accuracy": 0.9972451790633609
-    },
-    "logistic C=0.1": {
-      "macro_f1": 0.9360378371784557,
-      "balanced_accuracy": 0.9414999695523991,
-      "accuracy": 0.9566115702479339,
+      "macro_f1": 0.9322022372661134,
+      "balanced_accuracy": 0.9393898492331141,
+      "accuracy": 0.9511019283746557,
       "top3_accuracy": 0.9979338842975206
     },
+    "logistic C=0.1": {
+      "macro_f1": 0.9428761748760139,
+      "balanced_accuracy": 0.9463902437218481,
+      "accuracy": 0.9573002754820936,
+      "top3_accuracy": 0.9972451790633609
+    },
     "logistic C=1.0": {
-      "macro_f1": 0.9350589173635242,
-      "balanced_accuracy": 0.9357482561676485,
-      "accuracy": 0.9545454545454546,
-      "top3_accuracy": 0.9965564738292011
+      "macro_f1": 0.9422027193084404,
+      "balanced_accuracy": 0.9443957675570954,
+      "accuracy": 0.9566115702479339,
+      "top3_accuracy": 0.9972451790633609
     },
     "lightgbm": {
-      "macro_f1": 0.9065928837735033,
-      "balanced_accuracy": 0.9061127651443835,
-      "accuracy": 0.940771349862259,
-      "top3_accuracy": 0.9944903581267218
+      "macro_f1": 0.9139119896067681,
+      "balanced_accuracy": 0.9154111066249471,
+      "accuracy": 0.9421487603305785,
+      "top3_accuracy": 0.9965564738292011
     }
   },
   "test": {
@@ -39,17 +39,17 @@
       "accuracy": 0.11294765840220386,
       "top3_accuracy": 0.12741046831955924
     },
-    "logistic C=0.01": {
-      "macro_f1": 0.9517236261407299,
-      "balanced_accuracy": 0.9563934464963224,
-      "accuracy": 0.9662534435261708,
-      "top3_accuracy": 0.9972451790633609
+    "logistic C=0.1": {
+      "macro_f1": 0.9559518324526585,
+      "balanced_accuracy": 0.9584407718263648,
+      "accuracy": 0.9696969696969697,
+      "top3_accuracy": 0.9979338842975206
     },
     "lightgbm": {
-      "macro_f1": 0.9289784463746471,
-      "balanced_accuracy": 0.9310753136060668,
-      "accuracy": 0.9573002754820936,
-      "top3_accuracy": 0.9944903581267218
+      "macro_f1": 0.9302288871703441,
+      "balanced_accuracy": 0.9342285678142399,
+      "accuracy": 0.9566115702479339,
+      "top3_accuracy": 0.9924242424242424
     }
   }
 }

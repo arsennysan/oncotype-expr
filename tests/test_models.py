@@ -24,3 +24,16 @@ def test_logistic_pipeline_learns_separable_classes_and_metrics_are_sane():
     assert m["macro_f1"] > 0.95
     assert m["top3_accuracy"] == 1.0
     assert set(m) == {"macro_f1", "balanced_accuracy", "accuracy", "top3_accuracy"}
+
+
+def test_pipeline_imputes_rare_gaps_with_training_medians():
+    rng = np.random.default_rng(2)
+    y = np.repeat(["A", "B"], 30)
+    X = np.where(y[:, None] == "A", 3.0, -3.0) + rng.normal(size=(60, 5))
+    X_gappy = X.copy()
+    X_gappy[0, 1] = np.nan
+    model = logistic_pipeline(k=5, C=1.0).fit(X_gappy, y)
+    assert np.isclose(model.named_steps["impute"].statistics_[1], np.nanmedian(X_gappy[:, 1]))
+    test = X[:2].copy()
+    test[1, 3] = np.nan
+    assert model.predict(test).tolist() == ["A", "A"]
