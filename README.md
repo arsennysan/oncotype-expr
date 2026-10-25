@@ -217,6 +217,38 @@ python -m src.mixtures          # tumour/normal mixture augmentation
 python -m pytest -q tests
 ```
 
+## Ask the model about one tumour
+
+After `src.train`, `src.predict` shows the true type, the model's top three guesses and the genes behind the answer (push = the gene's exact SHAP value for that class):
+
+```bash
+python -m src.predict                         # one random tumour from the test set
+python -m src.predict --random 3              # three random test tumours
+python -m src.predict --split metastasis      # a random metastasis
+python -m src.predict TCGA-IC-A6RE-01         # a specific tumour by its TCGA id
+```
+
+```
+Tumour TCGA-IC-A6RE-01 (test set: the model has never seen it)
+True type: ESCA  Esophageal carcinoma
+
+Model's top 3 guesses:
+  1. STAD  Stomach adenocarcinoma                         50.2%
+  2. ESCA  Esophageal carcinoma                           49.7%  <- correct
+  3. COAD  Colon adenocarcinoma                            0.1%
+
+WRONG: the top guess is not the true type. The true type is guess #2.
+
+Genes that pushed the model towards STAD (push > 0 = towards STAD):
+  gene          push   expression vs average
+  MUC6          +0.19    +3.8 SD
+  PGA4          +0.18    +2.5 SD
+  PGA3          +0.14    +2.0 SD
+  ...
+```
+
+A near tie between stomach and oesophagus, decided by gastric-gland genes (pepsinogens, MUC6): plausibly an adenocarcinoma near the gastro-oesophageal junction. When the model is wrong, the genes for the true type are listed too.
+
 ## Project structure
 
 ```
@@ -229,6 +261,7 @@ src/robustness.py   metastases, unseen collection sites, gene budget
 src/external.py     independent cohorts: gene-id mapping, per-sample quantile normalisation
 src/background.py   GTEx normal tissues as background classes, compared on all cohorts
 src/mixtures.py     training on tumour/normal mixtures, synthetic check, paired test on MET500
+src/predict.py      one tumour: true type, top-3 guesses, genes behind the answer
 notebooks/          exploration with explanations
 results/            metrics.json, per-class report, figures
 tests/              unit tests on synthetic data, run by GitHub Actions
